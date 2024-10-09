@@ -1,9 +1,10 @@
+import numpy as np
 import pandas as pd
 from collections import deque
 
 
 class Data:
-    def __init__(self, df, mem_days, pre_days, constant_liquid, constant_pressure):
+    def __init__(self, df, mem_days, pre_days, constant_liquid, constant_pressure, train_test_ratio=0.8):
         # self.path = path
         self.df = df
         self.mem_days = mem_days
@@ -11,20 +12,24 @@ class Data:
         self.data = None
         self.cons_liqu = constant_liquid
         self.cons_pres = constant_pressure
+        self.train_test_ratio = train_test_ratio
 
         self.condition_liqu = (self.df['日产液 [sm3/d]'] > (self.cons_liqu - 0.001))
         self.condition_pres = (self.df['井底压力[bar]'] == self.cons_pres)
 
-    # def _read_file(self):
-    #     self.df = pd.read_excel(self.path)
     @property
     def deq_data(self):
         self._preprocess()
         self._build_data()
         # self._normalization()
-        deq_liqu = self._build_deq(self.df_cons_liqu)
-        deq_pres = self._build_deq(self.df_cons_pres)
-        return deq_liqu, deq_pres
+        deq_liqu, y_liqu = self._build_deq(self.df_cons_liqu)
+        deq_pres, y_pres = self._build_deq(self.df_cons_pres)
+        # 分割训练集和测试集
+        x_liqu_train, x_liqu_test = self._split_data(deq_liqu)
+        y_liqu_train, y_liqu_test = self._split_data(y_liqu)
+        x_pres_train, x_pres_test = self._split_data(deq_pres)
+        y_pres_train, y_pres_test = self._split_data(y_pres)
+        return x_liqu_train, y_liqu_train, x_liqu_test, y_liqu_test, x_pres_train, y_pres_train, x_pres_test, y_pres_test
         pass
 
     def _preprocess(self):
@@ -35,7 +40,7 @@ class Data:
         self.df.dropna(inplace=True)
         self.df.drop_duplicates(inplace=True)
         # 删除第一行
-        # self.df.drop(index=0, inplace=True)
+        self.df.shift(-1)
         # 重置索引
         self.df.reset_index(drop=True, inplace=True)
 
@@ -73,12 +78,22 @@ class Data:
         y_deq = []
         deq = deque(maxlen=self.mem_days)
         for i in range(len(df)):
-            deq.append(df.iloc[i].to_numpy())
+            item = df.iloc[i].to_numpy()
+            deq.append(item[:3])  # 前3列为x
+            y_deq.append(item[3:])  # 后2列为y
             if len(deq) == self.mem_days:
-                y_deq.append(deq[0][3:])  # label
                 x_deq.append(list(deq))
-        return x_deq[:-(self.mem_days + self.pre_days - 1)]  # 去掉最后几组数据，因为最后几组数据没有label
+        if self.mem_days == 1:
+            return np.array(x_deq), np.array(y_deq)
+        else:
+            return np.array(x_deq), np.array(y_deq[:-(self.mem_days - 1)])  # y去掉最后几组数据，因为最后一组数据对应的是倒数第5天的数据，且pre_days移动过了，所以去掉最后mem_days - 1组数据
 
+    def _split_data(self, data):
+        point = int(len(data) * self.train_test_ratio)
+        train = data[:point]
+        test = data[point:]
+
+        return train, test
 
 if __name__ == '__main__':
     df = pd.read_excel(r'D:\Git Hub Repositories\Oil Prediction\Y3557井生产特征10.3.xlsx')
@@ -87,4 +102,4 @@ if __name__ == '__main__':
     constant_liquid = 40
     constant_pressure = 85
     data = Data(df, mem_days, pre_days, constant_liquid, constant_pressure)
-    x_liqu, x_pres = data.deq_data
+    x_liqu, y_liqu, x_pres, y_pres = data.deq_data
