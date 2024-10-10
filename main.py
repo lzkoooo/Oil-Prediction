@@ -1,3 +1,4 @@
+import joblib
 import pandas as pd
 import torch
 from matplotlib import pyplot as plt
@@ -14,12 +15,12 @@ def search_model():
     '''
     constant_liquid = 40
     constant_pressure = 85
-    mem_days = [4, 6, 8]
+    mem_days = [5]
     pre_days = 1
-    hidden_size = [16, 32, 64]
-    num_layers = [2, 3, 5, 7]
+    hidden_size = [16]
+    num_layers = [2]
     dropout = 0.3
-    num_epoches = 130
+    num_epoches = 100
 
     for mem in mem_days:
         for hid in hidden_size:
@@ -38,9 +39,7 @@ def train_best_model():
     check_point = torch.load(r'models/best_liqu_model.pth')
 
     cfg = check_point["config"]
-    cfg.mem_days = 1
-    cfg.batch_size = 4
-    cfg.num_epoches = 500
+    num_epoches = 1000
     df = pd.read_excel(r'D:\Git Hub Repositories\Oil Prediction\Y3557井生产特征10.3.xlsx')
 
     data = Data(df, cfg.mem_days, cfg.pre_days, cfg.constant_liquid, cfg.constant_pressure)
@@ -54,6 +53,9 @@ def apply_model():
     data = Data(df, 4, 1, 40, 85, 0)
     save_all_data(data)
     _, _, x_liqu_test, y_liqu_test, _, _, _, _ = load_all_data()
+
+    scaler = joblib.load('scaler_liqu.pkl')
+    x_liqu_test = scaler.transform(x_liqu_test)
     pred_oil, pred_pres, label_oil, label_pres = prediction(x_liqu_test, y_liqu_test)
     lenth = [i for i in range(len(pred_oil))]
 
@@ -81,9 +83,9 @@ def apply_model():
 
 if __name__ == "__main__":
 
-    # search_model()
-    train_best_model()
+    search_model()
+    # train_best_model()
 
-    # apply_model()
+    apply_model()
     pass
 

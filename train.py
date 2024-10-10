@@ -21,7 +21,7 @@ def train_init(cfg):
     net.to(cfg.devices)
 
     loss_func = nn.MSELoss()  # 损失函数
-    optimizer = optim.Adam(net.parameters(), lr=cfg.learn_rate, weight_decay=cfg.weight_decay)
+    optimizer = optim.Adam(net.parameters(), lr=cfg.learn_rate)
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=cfg.step_size, gamma=cfg.gamma)  # 学习率调整
 
     return liqu_train_dataloader, net, loss_func, optimizer, scheduler
@@ -35,9 +35,10 @@ def start_train(cfg, save_path):
     # 开始训练
     for epoch in range(cfg.num_epoches):
         net.train()
-
+        loss_epoch = 0.0
+        iter_num = 0
         for i, batch in enumerate(liqu_train_dataloader):  # 取出每一个batch来训练
-            # print(f"Epoch: {epoch}, Batch: {i}")
+
 
             data, label = batch
             # print("Batch data shape:", data.shape)
@@ -51,30 +52,45 @@ def start_train(cfg, save_path):
             loss.backward()  # 进行反向传播得到每个参数的梯度值
             optimizer.step()  # 通过梯度下降对参数进行更新
 
-            # 出现更低的loss且低于1则保存
-            if loss.item() < min_loss and loss.item() <= 0.001:
-                min_loss = loss.item()
-                print(f"current_min_loss{min_loss}")
-                # print(f'pred: {pred}')
-                # print(f'label: {label}')
-                torch.save({
-                    'epoch': epoch,
-                    'model_state_dict': net.state_dict(),
-                    'optimizer_state_dict': optimizer.state_dict(),
-                    'loss': loss,
-                    'config': cfg
-                }, save_path + f'checkpoint_{loss.item()}.pth')
+            loss_epoch += loss.item()
+            iter_num += 1
 
+            print(f"Epoch: {epoch}, Batch: {i}, loss: {loss.item()}")
+        average_loss = loss_epoch / iter_num
+        print(f"average_loss{average_loss}")
+        # 出现更低的loss且低于1则保存
+        if average_loss < min_loss and average_loss <= 5:
+            min_loss = average_loss
+            print(f"current_min_loss{min_loss}")
+            # print(f'pred: {pred}')
+            # print(f'label: {label}')
+            torch.save({
+                'epoch': epoch,
+                'model_state_dict': net.state_dict(),
+                'optimizer_state_dict': optimizer.state_dict(),
+                'loss': average_loss,
+                'config': cfg,
+                'model': net
+            }, save_path + f'checkpoint_{average_loss}.pth')
+        # 最后保存一次
+        torch.save({
+            'epoch': epoch,
+            'model_state_dict': net.state_dict(),
+            'optimizer_state_dict': optimizer.state_dict(),
+            'loss': average_loss,
+            'config': cfg,
+            'model': net
+        }, save_path + f'model.pth')
         scheduler.step()  # 每个batch调整下学习率
 
 
 def prediction(x_liqu_test, y_liqu_test):
-    checkpoint = torch.load('./models/best_liqu_model.pth')
+    checkpoint = torch.load('models/best_liqu_model.pth')
+    checkpoint = torch.load('models/liqu_model/model.pth')
     cfg = checkpoint['config']
     cfg.batch_size = 1
-
-    net = Model(cfg)
-    net.load_state_dict(checkpoint['model_state_dict'])
+    cfg.is_shuffle = False
+    net = checkpoint['model']
     net.to(cfg.devices)
     liqu_test_dataloader = data_loader(x_liqu_test, y_liqu_test, cfg)
 

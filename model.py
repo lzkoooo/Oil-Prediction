@@ -8,10 +8,12 @@ class Model(nn.Module):
                             batch_first=True, dropout=cfg.dropout).double()
         self.linear_layer = nn.Linear(cfg.hidden_size, cfg.output_size).double()  # 构建全连接层
         self.relu = nn.ReLU().double()
+        self.prelu = nn.PReLU(num_parameters=cfg.hidden_size).double()
 
     def forward(self, x):  # x为输入数据
         out, _ = self.lstm(x)
-        out = out[:, -1, :]     # 即每个batch都选择最后一个时间步的全部节点输出
+        # out = out[:, -1, :]     # 即每个batch都选择最后一个时间步的全部节点输出
         out = self.relu(out)  # 激活函数
+        # out = self.prelu(out)  # 激活函数
         out = self.linear_layer(out)
         return out
