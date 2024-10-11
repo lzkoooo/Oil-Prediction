@@ -13,7 +13,7 @@ class Config:
         self.pre_days = pre_days
 
         self.input_size = 2
-        self.output_size = 2
+        self.output_size = 1
 
         self.num_epoch = num_epoch      # 每一次epoch代表遍历一遍数据集
         self.batch_size = batch_size

@@ -12,13 +12,13 @@ from train import train
 
 def draw(pred, label):
     x = [i for i in range(len(pred))]
-    oil_pred = pred[:, 0]
-    pres_pred = pred[:, 1]
-    oil_label = label[:, 0]
-    pres_label = label[:, 1]
+    # oil_pred = pred[:, 0]
+    pres_pred = pred[:, 0]
+    # oil_label = label[:, 0]
+    pres_label = label[:, 0]
 
-    plt.plot(x, oil_pred, label='oil_pred', color='black')
-    plt.plot(x, oil_label, label='oil_label', color='red')
+    # plt.plot(x, oil_pred, label='oil_pred', color='black')
+    # plt.plot(x, oil_label, label='oil_label', color='red')
     plt.plot(x, pres_pred, label='pres_pred', color='black')
     plt.plot(x, pres_label, label='pres_label', color='red')
 
@@ -27,8 +27,8 @@ def draw(pred, label):
 
 
 if __name__ == '__main__':
-    cfg = Config(3, 10, num_epoch=500, num_layers=4, hidden_size=1, learn_rate=0.01)
-    train(cfg)
+    # cfg = Config(3, 2, num_epoch=30, batch_size=1, num_layers=1, hidden_size=8, learn_rate=0.2)
+    # train(cfg)
     #
     pred, label = prediction()
     draw(pred, label)

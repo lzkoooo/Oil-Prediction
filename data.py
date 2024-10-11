@@ -70,8 +70,8 @@ class Data:
     def process(self):
         # 去除时间列
         all_data = self.ori_data.iloc[:, 1:]  # 此时为(油, 液, 压)
-        all_data = all_data.to_numpy()  # 转为numpy数组
-        print(all_data.dtype)
+        all_data = all_data.to_numpy()[1:]  # 转为numpy数组，并去除第一行
+        # print(all_data.dtype)
         self.save_csv_file(all_data, 'data/all_data.csv')
         # 分割liqu和pres数据并保存
         point = self.select_liqu_pres_point(all_data)
@@ -83,11 +83,14 @@ class Data:
 
     def build_sample(self):
         self.x_liqu = self.liqu_data[:, [0, 2]]
-        self.y_liqu = self.liqu_data[:, [0, 2]]  # 定液选油和压为label
+        self.y_liqu = self.liqu_data[:, [2]]  # 定液选压为label
         self.x_pres = self.pres_data[:, [0, 1]]
         self.y_pres = self.pres_data[:, [0, 1]]  # 定压选油和液为label
 
     def norm(self):
+
+        print(np.max(self.x_liqu))
+        print(np.min(self.x_liqu))
         liqu_scaler = MinMaxScaler((0, 1))
         pres_scaler = MinMaxScaler((0, 1))
         self.x_liqu = liqu_scaler.fit_transform(self.x_liqu)
@@ -98,11 +101,15 @@ class Data:
 
     def build_deq(self, X, Y):
         x_deq = []
-        deq = deque(maxlen=self.cfg.mem_days)
+        # deq = deque(maxlen=self.cfg.mem_days)
+        deq = []
         for i in range(len(X)):
-            deq.append(X[i])
             if len(deq) == self.cfg.mem_days:
-                x_deq.append(deq)
+                deq = deq[1:]
+            deq.append(X[i])
+            temp = deq
+            if len(deq) == self.cfg.mem_days:
+                x_deq.append(temp)
         x_deq = x_deq[:-self.cfg.pre_days]  # 去掉最后几个，因为没有对应的label
         y_deq = Y[self.cfg.mem_days + self.cfg.pre_days - 1:]
         return np.array(x_deq), np.array(y_deq)
@@ -120,11 +127,12 @@ class Data:
         self.test_y_pres = self.y_pres[int(len(self.x_pres) * self.train_test_ratio):]
 
     def get_data_loader(self, x, y, config):
-        dataset = Datasets(x, y)
-        return DataLoader(dataset, batch_size=config.batch_size, shuffle=config.is_shuffle, drop_last=True)
+        dataset = TensorDatasets(x, y)
+        #print(dataset[0:3])
+        return DataLoader(dataset, batch_size=config.batch_size, shuffle=config.is_shuffle, drop_last=False)
 
 
-class Datasets(Dataset):        # 继承Dataset父类
+class TensorDatasets(Dataset):        # 继承Dataset父类
     def __init__(self, x, y):
         self.x = x
         self.y = y
@@ -136,7 +144,7 @@ class Datasets(Dataset):        # 继承Dataset父类
     def __getitem__(self, index):    # 按照索引获取值，重写为对单个句子的数据进行格式化处理
         # self.x = torch.from_numpy(self.x).to('cuda')
         # self.y = torch.from_numpy(self.y).to('cuda')
-        return self.x[index], self.y[index]     # 返回的tensor中是各个词在词频字典中的编码，比如‘UNK’对应1000
+        return self.x[index], self.y[index]
 
 
 

@@ -8,27 +8,27 @@ import torch
 
 from data import Data
 
+def prediction_init():
+    checkpoint = torch.load('./model/last_model.pth')
+    cfg = checkpoint['config']
+    cfg.is_shuffle = False
+    cfg.batch_size = 1
+    net = checkpoint['model']
+    net.to(cfg.devices)
+    return net, cfg
+    pass
+
 
 def pred_data_init(cfg):
     cons_liqu = 40
     cons_pres = 85
 
-    data = Data(cfg, cons_liqu, cons_pres, True, train_test_ratio=0)
+    data = Data(cfg, cons_liqu, cons_pres, False, train_test_ratio=0)
     test_x_liqu = data.test_x_liqu
     test_y_liqu = data.test_y_liqu
     test_liqu_dataloader = data.get_data_loader(test_x_liqu, test_y_liqu, cfg)
 
     return test_liqu_dataloader
-    pass
-
-
-def prediction_init():
-    checkpoint = torch.load('./model/last_model.pth')
-    cfg = checkpoint['config']
-    cfg.is_shuffle = False
-    net = checkpoint['model']
-    net.to(cfg.devices)
-    return net, cfg
     pass
 
 

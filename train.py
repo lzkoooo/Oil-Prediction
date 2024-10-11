@@ -20,7 +20,7 @@ def data_init(cfg):
     cons_liqu = 40
     cons_pres = 85
 
-    data = Data(cfg, cons_liqu, cons_pres, True)
+    data = Data(cfg, cons_liqu, cons_pres, False)
     train_x_liqu = data.train_x_liqu
     train_y_liqu = data.train_y_liqu
     train_liqu_dataloader = data.get_data_loader(train_x_liqu, train_y_liqu, cfg)
@@ -58,6 +58,7 @@ def train(cfg):
         ave_loss_epoch = 0.0
         iter_num = 0
         net.train()
+
         for i, batch in enumerate(train_liqu_dataloader):
             x_batch, y_batch = batch
             x_batch = torch.as_tensor(x_batch).to(cfg.devices)
@@ -65,8 +66,9 @@ def train(cfg):
 
             optimizer.zero_grad()  # 梯度置为0，不置为0的话会与上一次batch的数据相关
             pred = net.forward(x_batch)  # 对data进行前向推理，得到预测
-            loss = loss_func(pred, y_batch)  # 计算loss
 
+            loss = loss_func(pred, y_batch)  # 计算loss
+            # print(f'pred:{pred.item()}   label:{y_batch.item()}')
             loss.backward()  # 进行反向传播得到每个参数的梯度值
             optimizer.step()  # 通过梯度下降对参数进行更新
 
