@@ -89,8 +89,8 @@ class Data:
 
     def norm(self):
 
-        print(np.max(self.x_liqu))
-        print(np.min(self.x_liqu))
+        # print(np.max(self.x_liqu))
+        # print(np.min(self.x_liqu))
         liqu_scaler = MinMaxScaler((0, 1))
         pres_scaler = MinMaxScaler((0, 1))
         self.x_liqu = liqu_scaler.fit_transform(self.x_liqu)
@@ -128,8 +128,8 @@ class Data:
 
     def get_data_loader(self, x, y, config):
         dataset = TensorDatasets(x, y)
-        #print(dataset[0:3])
-        return DataLoader(dataset, batch_size=config.batch_size, shuffle=config.is_shuffle, drop_last=False)
+        # print(dataset[0:3])
+        return DataLoader(dataset, batch_size=config.batch_size, shuffle=config.is_shuffle, drop_last=True)
 
 
 class TensorDatasets(Dataset):        # 继承Dataset父类

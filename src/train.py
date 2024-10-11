@@ -7,9 +7,9 @@ import numpy as np
 import torch
 from torch import nn, optim
 
-from configs import Config
-from data import Data
-from model import Model
+from backend.configs import Config
+from backend.data import Data
+from backend.model import Model
 
 
 def data_init(cfg):
@@ -20,7 +20,7 @@ def data_init(cfg):
     cons_liqu = 40
     cons_pres = 85
 
-    data = Data(cfg, cons_liqu, cons_pres, False)
+    data = Data(cfg, cons_liqu, cons_pres, True)
     train_x_liqu = data.train_x_liqu
     train_y_liqu = data.train_y_liqu
     train_liqu_dataloader = data.get_data_loader(train_x_liqu, train_y_liqu, cfg)
@@ -40,26 +40,27 @@ def train_init(cfg):
     pass
 
 
-def save_model(cfg, net, epoch=None, loss=None, model_path='./model/last_model.pth'):
+def save_model(config, net, epoch=None, loss=None, model_path=None):
     checkpoint = {
         'epoch': epoch,
         'loss': loss,
         'model': net,
-        'config': cfg
+        'config': config
     }
     torch.save(checkpoint, model_path)
 
 
 def train(cfg):
-    train_liqu_dataloader = data_init(cfg)
+    train_dataloader = data_init(cfg)
     net, optimizer, scheduler, loss_func = train_init(cfg)
+    save_min_loss = 9999
 
     for epoch in range(cfg.num_epoch):
         ave_loss_epoch = 0.0
         iter_num = 0
         net.train()
 
-        for i, batch in enumerate(train_liqu_dataloader):
+        for i, batch in enumerate(train_dataloader):
             x_batch, y_batch = batch
             x_batch = torch.as_tensor(x_batch).to(cfg.devices)
             y_batch = torch.as_tensor(y_batch).to(cfg.devices)
@@ -79,7 +80,13 @@ def train(cfg):
         print(f"\nEpoch: {epoch}, Loss: {ave_loss_epoch}")
         scheduler.step()
         # 保存模型
-        if ave_loss_epoch < 1:
-            save_model(cfg, net, epoch, ave_loss_epoch, fr'model/model_{ave_loss_epoch}.pth')
-    save_model(cfg, net)
+        if ave_loss_epoch < save_min_loss:  # 只保存最小loss模型
+            save_model(cfg, net, epoch, ave_loss_epoch, fr'model/{cfg.mode}/model_min_loss.pth')
+            save_min_loss = ave_loss_epoch
+    save_model(cfg, net, fr'model/{cfg.mode}/end_model.pth')    # 最后保存一次
     pass
+
+
+if __name__ == '__main__':
+    cfg = Config('liqu_oil', 3, 1, num_epoch=10, batch_size=1, num_layers=1, hidden_size=16, learn_rate=0.03)
+    train(cfg)

@@ -11,12 +11,12 @@ class Model(nn.Module):
         super(Model, self).__init__()
         self.lstm = nn.LSTM(input_size=cfg.input_size, hidden_size=cfg.hidden_size, num_layers=cfg.num_layers,
                             dropout=cfg.dropout, batch_first=True).double()
-        self.sigmoid = nn.Sigmoid().double()
+        self.relu = nn.ReLU().double()
         self.fc = nn.Linear(cfg.hidden_size, cfg.output_size).double()
 
     def forward(self, x):
         # print(x)
         out, _ = self.lstm(x)
-        out = self.sigmoid(out)
+        out = self.relu(out)
         out = self.fc(out)
         return out[:, -1, :]

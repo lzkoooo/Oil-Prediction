@@ -5,11 +5,13 @@
 # @Software : PyCharm
 import numpy as np
 import torch
+from matplotlib import pyplot as plt
 
-from data import Data
+from backend.data import Data
+
 
 def prediction_init():
-    checkpoint = torch.load('./model/last_model.pth')
+    checkpoint = torch.load('./model/model_0.0032220687932320853.pth')
     cfg = checkpoint['config']
     cfg.is_shuffle = False
     cfg.batch_size = 1
@@ -23,7 +25,7 @@ def pred_data_init(cfg):
     cons_liqu = 40
     cons_pres = 85
 
-    data = Data(cfg, cons_liqu, cons_pres, False, train_test_ratio=0)
+    data = Data(cfg, cons_liqu, cons_pres, True, train_test_ratio=0.2)
     test_x_liqu = data.test_x_liqu
     test_y_liqu = data.test_y_liqu
     test_liqu_dataloader = data.get_data_loader(test_x_liqu, test_y_liqu, cfg)
@@ -50,3 +52,26 @@ def prediction():
             label_list.append(y_batch[0].cpu().numpy())
         return np.array(pred_list), np.array(label_list)
     pass
+
+
+def draw(pred, label):
+    x = [i for i in range(len(pred))]
+    oil_pred = pred[:, 0]
+    pres_pred = pred[:, 0]
+    oil_label = label[:, 0]
+    pres_label = label[:, 0]
+
+    # plt.plot(x, oil_pred, label='oil_pred', color='black')
+    # plt.plot(x, oil_label, label='oil_label', color='red')
+    plt.plot(x, pres_pred, label='pres_pred', color='black')
+    plt.plot(x, pres_label, label='pres_label', color='red')
+
+    plt.show()
+    pass
+
+
+if __name__ == '__main__':
+
+    #
+    pred, label = prediction()
+    draw(pred, label)
