@@ -10,8 +10,8 @@ from matplotlib import pyplot as plt
 from backend.data import Data
 
 
-def prediction_init():
-    checkpoint = torch.load('./model/model_0.0032220687932320853.pth')
+def prediction_init(mode):
+    checkpoint = torch.load(fr'model/{mode}/best_model.pth')
     cfg = checkpoint['config']
     cfg.is_shuffle = False
     cfg.batch_size = 1
@@ -22,13 +22,9 @@ def prediction_init():
 
 
 def pred_data_init(cfg):
-    cons_liqu = 40
-    cons_pres = 85
-
-    data = Data(cfg, cons_liqu, cons_pres, True, train_test_ratio=0.2)
-    test_x_liqu = data.test_x_liqu
-    test_y_liqu = data.test_y_liqu
-    test_liqu_dataloader = data.get_data_loader(test_x_liqu, test_y_liqu, cfg)
+    data = Data(cfg, True, train_test_ratio=0.2)
+    test_x, test_y = data.get_test_data()
+    test_liqu_dataloader = data.get_data_loader(test_x, test_y, cfg)
 
     return test_liqu_dataloader
     pass

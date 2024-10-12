@@ -17,13 +17,9 @@ def data_init(cfg):
     torch.manual_seed(5)
     torch.cuda.manual_seed_all(8)
 
-    cons_liqu = 40
-    cons_pres = 85
-
-    data = Data(cfg, cons_liqu, cons_pres, True)
-    train_x_liqu = data.train_x_liqu
-    train_y_liqu = data.train_y_liqu
-    train_liqu_dataloader = data.get_data_loader(train_x_liqu, train_y_liqu, cfg)
+    data = Data(cfg, cfg.cons_liqu, cfg.cons_pres, True)
+    train_x, train_y = data.get_train_data()
+    train_liqu_dataloader = data.get_data_loader(train_x, train_y, cfg)
 
     return train_liqu_dataloader
     pass

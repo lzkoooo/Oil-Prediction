@@ -12,42 +12,22 @@ import torch
 from sklearn.preprocessing import MinMaxScaler
 from torch.utils.data import Dataset, DataLoader
 
+from backend.configs import Config
+
 
 class Data:
-    def __init__(self, cfg, constant_liqu, constant_pres, norm_open=False, train_test_ratio=0.7):
+    def __init__(self, cfg, norm_open=False, train_test_ratio=0.7):
         self.cfg = cfg
 
-        self.ori_data = pd.read_excel(r'Y3557井生产特征10.3.xlsx')
-        self.constant_liqu = constant_liqu
-        self.constant_pres = constant_pres
+        self.ori_data = pd.read_excel(r'../../data/Y3557井生产特征10.3.xlsx')
         self.norm_open = norm_open
         self.train_test_ratio = train_test_ratio
 
         self.liqu_data = None
         self.pres_data = None
 
-        self.x_liqu = None
-        self.y_liqu = None
-        self.x_pres = None
-        self.y_pres = None
-        self.train_x_liqu = None
-        self.train_y_liqu = None
-        self.test_x_liqu = None
-        self.test_y_liqu = None
-        self.train_x_pres = None
-        self.train_y_pres = None
-        self.test_x_pres = None
-        self.test_y_pres = None
-
         self.process()
-        self.build_sample()
-        if self.norm_open:
-            self.norm()
-        self.split_train_test()
-        self.train_x_liqu, self.train_y_liqu = self.build_deq(self.train_x_liqu, self.train_y_liqu)
-        self.test_x_liqu, self.test_y_liqu = self.build_deq(self.test_x_liqu, self.test_y_liqu)
-        self.train_x_pres, self.train_y_pres = self.build_deq(self.train_x_pres, self.train_y_pres)
-        self.test_x_pres, self.test_y_pres = self.build_deq(self.test_x_pres, self.test_y_pres)
+
         pass
 
     def save_csv_file(self, data, path):
@@ -60,44 +40,69 @@ class Data:
         pass
 
     def select_liqu_pres_point(self, data):
-        point = None
+        liqu_pres_point = None
         for i in range(len(data)):
-            if data[i][1] < (self.constant_liqu - 0.001) and data[i][2] == self.constant_pres:  # 选出来是cons_pres数据开头第一个
-                point = i
+            if data[i][1] < (self.cfg.cons_liqu - 0.001) and data[i][2] == self.cfg.cons_pres:  # 选出来是cons_pres数据开头第一个
+                liqu_pres_point = i
                 break
-        return point
+        return liqu_pres_point
 
     def process(self):
         # 去除时间列
         all_data = self.ori_data.iloc[:, 1:]  # 此时为(油, 液, 压)
         all_data = all_data.to_numpy()[1:]  # 转为numpy数组，并去除第一行
-        # print(all_data.dtype)
-        self.save_csv_file(all_data, 'data/all_data.csv')
+
         # 分割liqu和pres数据并保存
         point = self.select_liqu_pres_point(all_data)
         self.liqu_data = all_data[:point, :]
         self.pres_data = all_data[point:, :]
-        self.save_csv_file(self.liqu_data, 'data/liqu_data.csv')
-        self.save_csv_file(self.pres_data, 'data/pres_data.csv')
+
+        # self.save_csv_file(all_data, 'data/all_data.csv')
+        # self.save_csv_file(self.liqu_data, 'data/liqu_data.csv')
+        # self.save_csv_file(self.pres_data, 'data/pres_data.csv')
         pass
 
-    def build_sample(self):
-        self.x_liqu = self.liqu_data[:, [0, 2]]
-        self.y_liqu = self.liqu_data[:, [2]]  # 定液选压为label
-        self.x_pres = self.pres_data[:, [0, 1]]
-        self.y_pres = self.pres_data[:, [0, 1]]  # 定压选油和液为label
+    def build_sample_by_mode(self):  # 已分割过liqu和pres数据
+        x = None
+        y = None
+        if self.cfg.mode == 'liqu_oil' or self.cfg.mode == 'liqu_pres':
+            x = self.liqu_data[:, [0, 2]]
+            if self.cfg.mode == 'liqu_oil':
+                y = self.liqu_data[:, 0]  # 定液  选油为label
+            elif self.cfg.mode == 'liqu_pres':
+                y = self.liqu_data[:, 2]  # 定液  选压为label
+            # 返回liqu数据
+        elif self.cfg.mode == 'pres_oil' or self.cfg.mode == 'pres_liqu':
+            x = self.pres_data[:, [0, 1]]
+            if self.cfg.mode == 'pres_oil':
+                y = self.pres_data[:, 0]  # 定压  选油为label
+            elif self.cfg.mode == 'pres_liqu':
+                y = self.pres_data[:, 1]  # 定压  选液为label
+            # 返回pres数据
+        return x, y
 
-    def norm(self):
+    def norm(self, x):
+        scaler = MinMaxScaler((0, 1))
+        sca_x = scaler.fit_transform(x)
+        if self.cfg.mode == 'liqu_oil' or self.cfg.mode == 'liqu_pres':
+            joblib.dump(scaler, '../../tool/liqu_scaler.pkl')
+        elif self.cfg.mode == 'pres_oil' or self.cfg.mode == 'pres_liqu':
+            joblib.dump(scaler, '../../tool/pres_scaler.pkl')
 
-        # print(np.max(self.x_liqu))
-        # print(np.min(self.x_liqu))
-        liqu_scaler = MinMaxScaler((0, 1))
-        pres_scaler = MinMaxScaler((0, 1))
-        self.x_liqu = liqu_scaler.fit_transform(self.x_liqu)
-        self.x_pres = pres_scaler.fit_transform(self.x_pres)
-        joblib.dump(liqu_scaler, 'tool/liqu_scaler.pkl')
-        joblib.dump(pres_scaler, 'tool/pres_scaler.pkl')
+        return sca_x
         pass
+
+    def split_train_test(self):
+        x, y = self.build_sample_by_mode()
+        if self.norm_open:
+            x = self.norm(x)
+
+        train_test_point = int(len(x) * self.train_test_ratio)
+        train_x = x[: train_test_point]
+        train_y = y[: train_test_point]
+        test_x = x[train_test_point:]
+        test_y = y[train_test_point:]
+        return train_x, train_y, test_x, test_y
 
     def build_deq(self, X, Y):
         x_deq = []
@@ -114,17 +119,15 @@ class Data:
         y_deq = Y[self.cfg.mem_days + self.cfg.pre_days - 1:]
         return np.array(x_deq), np.array(y_deq)
 
+    def get_train_data(self):
+        train_x, train_y, _, _ = self.split_train_test()
+        train_x_deq, train_y_deq = self.build_deq(train_x, train_y)
+        return train_x_deq, train_y_deq
 
-    def split_train_test(self):
-        self.train_x_liqu = self.x_liqu[:int(len(self.x_liqu) * self.train_test_ratio)]
-        self.train_y_liqu = self.y_liqu[:int(len(self.x_liqu) * self.train_test_ratio)]
-        self.test_x_liqu = self.x_liqu[int(len(self.x_liqu) * self.train_test_ratio):]
-        self.test_y_liqu = self.y_liqu[int(len(self.x_liqu) * self.train_test_ratio):]
-
-        self.train_x_pres = self.x_pres[:int(len(self.x_pres) * self.train_test_ratio)]
-        self.train_y_pres = self.y_pres[:int(len(self.x_pres) * self.train_test_ratio)]
-        self.test_x_pres = self.x_pres[int(len(self.x_pres) * self.train_test_ratio):]
-        self.test_y_pres = self.y_pres[int(len(self.x_pres) * self.train_test_ratio):]
+    def get_test_data(self):
+        _, _, test_x, test_y, = self.split_train_test()
+        test_x_deq, test_y_deq = self.build_deq(test_x, test_y)
+        return test_x_deq, test_y_deq
 
     def get_data_loader(self, x, y, config):
         dataset = TensorDatasets(x, y)
@@ -132,29 +135,27 @@ class Data:
         return DataLoader(dataset, batch_size=config.batch_size, shuffle=config.is_shuffle, drop_last=True)
 
 
-class TensorDatasets(Dataset):        # 继承Dataset父类
+class TensorDatasets(Dataset):  # 继承Dataset父类
     def __init__(self, x, y):
         self.x = x
         self.y = y
-        # np.random.shuffle(self.data)        # 按第一维度打乱数据
 
     def __len__(self):
         return len(self.x)
 
-    def __getitem__(self, index):    # 按照索引获取值，重写为对单个句子的数据进行格式化处理
-        # self.x = torch.from_numpy(self.x).to('cuda')
-        # self.y = torch.from_numpy(self.y).to('cuda')
+    def __getitem__(self, index):
         return self.x[index], self.y[index]
 
 
-
 if __name__ == '__main__':
-    data = Data(40, 85)
-    train_x_liqu = data.train_x_liqu
-    train_y_liqu = data.train_y_liqu
-    test_x_liqu = data.test_x_liqu
-    test_y_liqu = data.test_y_liqu
+    mode = 'liqu_pres'
+    cons_liqu = 40
+    cons_pres = 85
 
-    print(len(train_x_liqu))
-    print(len(test_x_liqu))
-    print(train_x_liqu[-1])
+    cfg = Config(mode, cons_liqu, cons_pres)
+    data = Data(cfg, norm_open=True)
+    train_x, train_y = data.get_train_data()
+    test_x, test_y = data.get_test_data()
+    print(train_x.shape, train_y.shape)
+
+
