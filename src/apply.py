@@ -69,7 +69,7 @@ def draw(pred, label):
 
 
 if __name__ == '__main__':
-    mode = 'pres_oil'
+    mode = 'liqu_pres'
     #
     pred, label = prediction(mode)
     draw(pred, label)

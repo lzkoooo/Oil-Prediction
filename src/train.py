@@ -46,10 +46,9 @@ def save_model(config, net, epoch=None, loss=None, model_path=None):
     torch.save(checkpoint, model_path)
 
 
-def train(cfg):
+def train(cfg, search_min_loss):
     train_dataloader = data_init(cfg)
     net, optimizer, scheduler, loss_func = train_init(cfg)
-    save_min_loss = 9999
 
     for epoch in range(cfg.num_epoch):
         ave_loss_epoch = 0.0
@@ -76,10 +75,11 @@ def train(cfg):
         print(f"\nEpoch: {epoch}, Loss: {ave_loss_epoch}")
         scheduler.step()
         # 保存模型
-        if ave_loss_epoch < save_min_loss:  # 只保存最小loss模型
+        if ave_loss_epoch < search_min_loss:  # 只保存最小loss模型
             save_model(cfg, net, epoch, ave_loss_epoch, fr'D:/Git Hub Repositories/Oil Prediction/model/{cfg.mode}/min_loss_model.pth')
-            save_min_loss = ave_loss_epoch
+            search_min_loss = ave_loss_epoch
     save_model(cfg, net, model_path=fr'D:/Git Hub Repositories/Oil Prediction/model/{cfg.mode}/end_model.pth')    # 最后保存一次
+    return search_min_loss
     pass
 
 
@@ -90,10 +90,15 @@ if __name__ == '__main__':
 
     search_min_loss = 9999
 
-    num_epoch = 30
-    batch_size = [1, 2, 4]
-    hidden_size = [16, 32]
-    learn_rate = []
+    num_epoch = 20
+    batch_size_list = [1, 2, 4]
+    hidden_size_list = [16, 32]
+    num_layers_list = [1, 2]
+    learn_rate_list = [0.01, 0.03, 0.06]
 
-    cfg = Config(mode, cons_liqu, cons_pres, 3, 1, num_epoch=num_epoch, batch_size=batch_size, hidden_size=hidden_size, learn_rate=learn_rate)
-    search_min_loss = train(cfg, search_min_loss)
+    for batch_size in batch_size_list:
+        for hidden_size in hidden_size_list:
+            for num_layers in num_layers_list:
+                for learn_rate in learn_rate_list:
+                    cfg = Config(mode, cons_liqu, cons_pres, 3, 1, num_epoch=num_epoch, batch_size=batch_size, num_layers=num_layers, hidden_size=hidden_size, learn_rate=learn_rate)
+                    search_min_loss = train(cfg, search_min_loss)
