@@ -3,6 +3,8 @@
 # @Author : 李兆堃
 # @File : apply.py
 # @Software : PyCharm
+import os
+
 import numpy as np
 import torch
 from matplotlib import pyplot as plt
@@ -11,10 +13,16 @@ from backend.data import Data
 
 
 def prediction_init(mode):
-    checkpoint = torch.load(fr'model/{mode}/best_model.pth')
+    model_path = fr'D:/Git Hub Repositories/Oil Prediction/model/{mode}/end_model.pth'
+
+    if os.path.exists(fr'D:/Git Hub Repositories/Oil Prediction/model/{mode}/min_loss_model.pth'):
+        model_path = fr'D:/Git Hub Repositories/Oil Prediction/model/{mode}/min_loss_model.pth'
+    checkpoint = torch.load(model_path)
+
+    # 获取config
     cfg = checkpoint['config']
     cfg.is_shuffle = False
-    cfg.batch_size = 1
+    # cfg.batch_size = 1
     net = checkpoint['model']
     net.to(cfg.devices)
     return net, cfg
@@ -30,8 +38,8 @@ def pred_data_init(cfg):
     pass
 
 
-def prediction():
-    net, cfg = prediction_init()
+def prediction(mode):
+    net, cfg = prediction_init(mode)
     test_liqu_dataloader = pred_data_init(cfg)
 
     net.eval()
@@ -52,22 +60,16 @@ def prediction():
 
 def draw(pred, label):
     x = [i for i in range(len(pred))]
-    oil_pred = pred[:, 0]
-    pres_pred = pred[:, 0]
-    oil_label = label[:, 0]
-    pres_label = label[:, 0]
 
-    # plt.plot(x, oil_pred, label='oil_pred', color='black')
-    # plt.plot(x, oil_label, label='oil_label', color='red')
-    plt.plot(x, pres_pred, label='pres_pred', color='black')
-    plt.plot(x, pres_label, label='pres_label', color='red')
+    plt.plot(x, pred[:, 0], label='pres_pred', color='black')
+    plt.plot(x, label, label='pres_label', color='red')
 
     plt.show()
     pass
 
 
 if __name__ == '__main__':
-
+    mode = 'pres_oil'
     #
-    pred, label = prediction()
+    pred, label = prediction(mode)
     draw(pred, label)

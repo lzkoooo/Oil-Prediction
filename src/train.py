@@ -17,7 +17,7 @@ def data_init(cfg):
     torch.manual_seed(5)
     torch.cuda.manual_seed_all(8)
 
-    data = Data(cfg, cfg.cons_liqu, cfg.cons_pres, True)
+    data = Data(cfg, norm_open=True)
     train_x, train_y = data.get_train_data()
     train_liqu_dataloader = data.get_data_loader(train_x, train_y, cfg)
 
@@ -77,12 +77,23 @@ def train(cfg):
         scheduler.step()
         # 保存模型
         if ave_loss_epoch < save_min_loss:  # 只保存最小loss模型
-            save_model(cfg, net, epoch, ave_loss_epoch, fr'model/{cfg.mode}/model_min_loss.pth')
+            save_model(cfg, net, epoch, ave_loss_epoch, fr'D:/Git Hub Repositories/Oil Prediction/model/{cfg.mode}/min_loss_model.pth')
             save_min_loss = ave_loss_epoch
-    save_model(cfg, net, fr'model/{cfg.mode}/end_model.pth')    # 最后保存一次
+    save_model(cfg, net, model_path=fr'D:/Git Hub Repositories/Oil Prediction/model/{cfg.mode}/end_model.pth')    # 最后保存一次
     pass
 
 
 if __name__ == '__main__':
-    cfg = Config('liqu_oil', 3, 1, num_epoch=10, batch_size=1, num_layers=1, hidden_size=16, learn_rate=0.03)
-    train(cfg)
+    mode = 'pres_oil'
+    cons_liqu = 40
+    cons_pres = 85
+
+    search_min_loss = 9999
+
+    num_epoch = 30
+    batch_size = [1, 2, 4]
+    hidden_size = [16, 32]
+    learn_rate = []
+
+    cfg = Config(mode, cons_liqu, cons_pres, 3, 1, num_epoch=num_epoch, batch_size=batch_size, hidden_size=hidden_size, learn_rate=learn_rate)
+    search_min_loss = train(cfg, search_min_loss)

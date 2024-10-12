@@ -19,7 +19,7 @@ class Data:
     def __init__(self, cfg, norm_open=False, train_test_ratio=0.7):
         self.cfg = cfg
 
-        self.ori_data = pd.read_excel(r'../../data/Y3557井生产特征10.3.xlsx')
+        self.ori_data = pd.read_excel(r'D:/Git Hub Repositories/Oil Prediction/data/Y3557井生产特征10.3.xlsx')
         self.norm_open = norm_open
         self.train_test_ratio = train_test_ratio
 
@@ -85,9 +85,9 @@ class Data:
         scaler = MinMaxScaler((0, 1))
         sca_x = scaler.fit_transform(x)
         if self.cfg.mode == 'liqu_oil' or self.cfg.mode == 'liqu_pres':
-            joblib.dump(scaler, '../../tool/liqu_scaler.pkl')
+            joblib.dump(scaler, 'D:/Git Hub Repositories/Oil Prediction/tool/liqu_scaler.pkl')
         elif self.cfg.mode == 'pres_oil' or self.cfg.mode == 'pres_liqu':
-            joblib.dump(scaler, '../../tool/pres_scaler.pkl')
+            joblib.dump(scaler, 'D:/Git Hub Repositories/Oil Prediction/tool/pres_scaler.pkl')
 
         return sca_x
         pass
