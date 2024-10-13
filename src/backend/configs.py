@@ -8,7 +8,7 @@ import torch
 
 
 class Config:
-    def __init__(self, mode, cons_liqu, cons_pres, mem_days=5, pre_days=2, num_epoch=50, batch_size=32, is_shuffle=True, num_layers=2, hidden_size=32, learn_rate=0.005, dropout=0.3, step_size=1, gamma=0.99):
+    def __init__(self, mode, cons_liqu, cons_pres, mem_days=5, pre_days=2, num_epoch=50, batch_size=32, is_shuffle=False, num_layers=2, hidden_size=32, learn_rate=0.005, dropout=0.3, step_size=1, gamma=0.99):
         self.mode = mode    # 分为'liqu_oil', 'liqu_pres', 'pres_oil', 'pres_liqu'四种模式
 
         self.cons_liqu = cons_liqu
