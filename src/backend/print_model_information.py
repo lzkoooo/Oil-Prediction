@@ -6,6 +6,9 @@
 import torch
 
 if __name__ == '__main__':
-    check_point = torch.load(r'/model/liqu_pres/min_loss_model.pth')
+    check_point = torch.load(r'D:\Git Hub Repositories\Oil Prediction/model/pres_liqu/min_loss_model.pth')
     cfg = check_point['config']
     print(cfg.num_layers)
+    print(cfg.hidden_size)
+    print(cfg.batch_size)
+

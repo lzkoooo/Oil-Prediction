@@ -1,106 +1,119 @@
 # -*- coding = utf-8 -*-
-# @Time : 2024/10/10 下午6:54
+# @Time : 2024/10/13 上午10:25
 # @Author : 李兆堃
 # @File : apply.py
 # @Software : PyCharm
 import os
 
+import joblib
 import numpy as np
 import pandas as pd
 import torch
 from matplotlib import pyplot as plt
 
-from backend.data import Data
 
+def prediction_init():
+    mode_list = ['liqu_oil', 'liqu_pres', 'pres_oil', 'pres_liqu']
+    net_list = []
 
-def prediction_init(mode):
-    model_path = fr'D:/Git Hub Repositories/Oil Prediction/model/{mode}/end_model.pth'
+    for mode in mode_list:
+        model_path = fr'D:/Git Hub Repositories/Oil Prediction/model/{mode}/end_model.pth'
 
-    if os.path.exists(fr'D:/Git Hub Repositories/Oil Prediction/model/{mode}/min_loss_model.pth'):
-        model_path = fr'D:/Git Hub Repositories/Oil Prediction/model/{mode}/min_loss_model.pth'
-    checkpoint = torch.load(model_path)
+        if os.path.exists(fr'D:/Git Hub Repositories/Oil Prediction/model/{mode}/min_loss_model.pth'):
+            model_path = fr'D:/Git Hub Repositories/Oil Prediction/model/{mode}/min_loss_model.pth'
+        checkpoint = torch.load(model_path)
 
-    # 获取config
-    cfg = checkpoint['config']
-    cfg.is_shuffle = False
-    # cfg.batch_size = 1
-    net = checkpoint['model']
-    net.to(cfg.devices)
-    return net, cfg
+        net = checkpoint['model']
+        devices = checkpoint['config'].devices
+        net.eval()
+
+        net.to(devices)
+        net_list.append(net)
+
+    return net_list, devices
     pass
 
 
-def pred_data_init(cfg):
-    data = Data(cfg, True, train_test_ratio=cfg.train_test_ratio)
-    test_x, test_y = data.get_test_data()
-    test_liqu_dataloader = data.get_data_loader(test_x, test_y, cfg)
+def build_norm_data(data, mode):
+    norm_data = None
 
-    return test_liqu_dataloader
+    if mode == 'cons_liqu':
+        scaler = joblib.load('D:/Git Hub Repositories/Oil Prediction/tool/liqu_scaler.pkl')
+
+        oil = scaler.transform(data)[:, 0]
+        pres = scaler.transform(data)[:, 1]
+        norm_data = np.column_stack((oil, pres))
+
+    elif mode == 'cons_pres':
+        scaler = joblib.load('D:/Git Hub Repositories/Oil Prediction/tool/pres_scaler.pkl')
+
+        oil = scaler.transform(data)[:, 0]
+        liqu = scaler.transform(data)[:, 1]
+        norm_data = np.column_stack((oil, liqu))
+
+    return norm_data
     pass
 
 
-def prediction(mode, train_test_ratio=None):
-    net, cfg = prediction_init(mode)
-    if train_test_ratio is not None:
-        cfg.train_test_ratio = train_test_ratio
+def continuous_prediction(init_data, pre_days):
+    cons_liqu = 40
+    cons_pres = 85
+    mode_switch = pre_days - 814
+    current_data = init_data
+    result = []
+    net_list, devices = prediction_init()
 
-    prediction_dataloader = pred_data_init(cfg)
-
-    net.eval()
-    pred_list = []
-    label_list = []
     with torch.no_grad():
-        for i, batch in enumerate(prediction_dataloader):
-            x_batch, y_batch = batch
-            x_batch = torch.as_tensor(x_batch).to(cfg.devices)
-            y_batch = torch.as_tensor(y_batch).to(cfg.devices)
+        while True:
+            if pre_days <= mode_switch or pre_days == 0:  # 切换模式
+                break
 
-            pred = net.forward(x_batch)  # 对data进行前向推理，得到预测
-            pred_list.append(pred.cpu().numpy())
-            label_list.append(y_batch[0].cpu().numpy())
-        return np.array(pred_list), np.array(label_list), cfg
-    pass
+            norm_data = build_norm_data(current_data[:, [0, 2]], 'cons_liqu')
+            pred_oil = net_list[0].forward(torch.as_tensor(norm_data).to(devices)).cpu().numpy()
+            pred_pres = net_list[1].forward(torch.as_tensor(norm_data).to(devices)).cpu().numpy()
+            new_data = np.array([float(pred_oil), float(cons_liqu), float(pred_pres)])
+            current_data = np.concatenate((current_data[1:, :], [new_data]), axis=0)
+            result.append(new_data)
 
-def process(data, cfg):
-    cons_liqu = cfg.cons_liqu
-    cons_pres = cfg.cons_pres
+            pre_days -= 1
 
-    pred_oil = np.concatenate((data[0, 0].flatten(), data[2, 0].flatten()), axis=0)
-    pred_liqu = np.concatenate((np.array([cons_liqu for i in range(len(pred_oil) - len(data[3, 0]))]), data[3, 0].flatten()), axis=0)
-    pred_pres = np.concatenate((data[1, 0].flatten(), np.array([cons_pres for i in range(len(pred_oil) - len(data[1, 0]))])), axis=0).flatten()
-    # label = pd.read_excel(r'D:/Git Hub Repositories/Oil Prediction/data/Y3557井生产特征10.3.xlsx').iloc[:, 1:].to_numpy()    # 油， 液， 压
-    label_oil = np.concatenate((data[0, 1].flatten(), data[2, 1].flatten()), axis=0)
-    label_liqu = np.concatenate((np.array([cons_liqu for i in range(len(pred_oil) - len(data[3, 1]))]), data[3, 1].flatten()), axis=0)
-    label_pres = np.concatenate((data[1, 1].flatten(), np.array([cons_pres for i in range(len(pred_oil) - len(data[1, 1]))])), axis=0).flatten()
-    pred = [pred_oil, pred_liqu, pred_pres]
-    label = [label_oil, label_liqu, label_pres]
-    return pred, label
-    pass
+            # if pred_pres < cons_pres:  # 切换模式
+            #     break
 
-def draw(pred, label):
-    x = [i for i in range(len(pred[0]))]
+        while True:
+            if pre_days == 0:  # 结束
+                break
 
-    plt.plot(x, pred[0], label='pred_oil', color='black')
-    plt.plot(x, pred[1], label='pred_liqu', color='black')
-    plt.plot(x, pred[2], label='pred_pres', color='black')
+            norm_data = build_norm_data(current_data[:, [0, 1]], 'cons_pres')
+            pred_oil = net_list[2].forward(torch.as_tensor(norm_data).to(devices)).cpu().numpy()
+            pred_liqu = net_list[3].forward(torch.as_tensor(norm_data).to(devices)).cpu().numpy()
+            new_data = np.array([float(pred_oil), float(pred_liqu), float(cons_pres)])
+            current_data = np.concatenate((current_data[1:, :], [new_data]), axis=0)
+            result.append(new_data)
 
-    plt.plot(x, label[0], label='label_oil', color='red')
-    plt.plot(x, label[1], label='label_liqu', color='red')
-    plt.plot(x, label[2], label='label_pres', color='red')
-    
-    plt.show()
+            pre_days -= 1
+
+    return np.array(result)
     pass
 
 
 if __name__ == '__main__':
-    mode_list = ['liqu_oil', 'liqu_pres', 'pres_oil', 'pres_liqu']
-    result = []
-    config = None
+    prediction_days = 2000
 
-    for mode in mode_list:
-        pred, label, cfg = prediction(mode, 0)      # 全量预测测试
-        result.append([pred, label])
-        config = cfg
+    init_data = np.array([[12.03142548, 40, 99.34012604], [12.04320621, 40.00000095, 98.45579529],
+                          [12.04172993, 39.99999905, 98.22970581]])
+    pred = continuous_prediction(init_data, prediction_days)
+    label = pd.read_excel(r'D:/Git Hub Repositories/Oil Prediction/data/Y3557井生产特征10.3.xlsx').iloc[:, 1:].to_numpy()[1+3+1: prediction_days + 1+3+1]
+    x = [i for i in range(prediction_days)]
 
-    pred, label = process(np.array(result), cfg)
-    draw(pred, label)
+    plt.plot(x, pred[:, 0], label='pred_oil', color='black')
+    plt.plot(x, pred[:, 1], label='pred_liqu', color='black')
+    plt.plot(x, pred[:, 2], label='pred_pres', color='black')
+
+    plt.plot(x, label[:, 0], label='label_oil', color='red')
+    plt.plot(x, label[:, 1], label='label_liqu', color='red')
+    plt.plot(x, label[:, 2], label='label_pres', color='red')
+
+    plt.legend()
+    plt.show()
+
