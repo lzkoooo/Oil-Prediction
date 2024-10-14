@@ -92,11 +92,11 @@ def train(cfg):
 
 
 if __name__ == '__main__':
-    mode_list = ['liqu_oil', 'pres_oil']
+    mode_list = ['liqu_pres']
     cons_liqu = 40
     cons_pres = 85
 
-    num_epoch = 30
+    num_epoch = 40
     # mem_days_list = [3, 5, 10]
     # batch_size_list = [1, 2, 4]
     # hidden_size_list = [16, 32]
@@ -106,7 +106,7 @@ if __name__ == '__main__':
     mem_days_list = [3]
     batch_size_list = [1]
     hidden_size_list = [16, 32]
-    num_layers_list = [1]
+    num_layers_list = [1, 2, 4]
     learn_rate_list = [0.01, 0.03, 0.06]
 
     for mem_days in mem_days_list:

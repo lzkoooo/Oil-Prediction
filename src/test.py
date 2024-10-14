@@ -9,7 +9,7 @@ import joblib
 import numpy as np
 import pandas as pd
 import torch
-from matplotlib import pyplot as plt
+from matplotlib import pyplot as plt, rcParams
 
 from backend.data import Data
 
@@ -78,19 +78,68 @@ def process(data, cfg):
     return pred, label
     pass
 
-def draw(pred, label):
+
+def draw_item(pred, label):
+    plt.rcParams['font.size'] = 13
+    rcParams['font.sans-serif'] = ['SimHei']
     x = [i for i in range(len(pred[0]))]
 
-    plt.plot(x, pred[0], label='pred_oil', color='black')
-    plt.plot(x, pred[1], label='pred_liqu', color='black')
-    plt.plot(x, pred[2], label='pred_pres', color='black')
+    fig, axs = plt.subplots(3, 1, figsize=(8, 8), sharex=True)
 
-    plt.plot(x, label[0], label='label_oil', color='red')
-    plt.plot(x, label[1], label='label_liqu', color='red')
-    plt.plot(x, label[2], label='label_pres', color='red')
+    axs[0].set_title('产油预测')
+    axs[0].plot(x, label[0], label='真实值', color='r')
+    axs[0].plot(x, pred[0], label='预测值', color='g')
+    axs[0].set_xlabel('天数/d')
+    axs[0].set_ylabel('日产油量/m^3')
 
-    plt.legend()
+    axs[1].set_title('产液预测')
+    axs[1].plot(x, label[1], label='真实值', color='r')
+    axs[1].plot(x, pred[1], label='预测值', color='g')
+    axs[1].set_xlabel('天数/d')
+    axs[1].set_ylabel('日产液量/m^3')
+
+    axs[2].set_title('井底压力预测')
+    axs[2].plot(x, label[2], label='真实值', color='r')
+    axs[2].plot(x, pred[2], label='预测值', color='g')
+    axs[2].set_xlabel('天数/d')
+    axs[2].set_ylabel('井底压力/bar')
+
+    handles, labels = axs[0].get_legend_handles_labels()
+    fig.legend(handles, labels, loc='upper right', fontsize=14)
+    fig.subplots_adjust(left=0.2, right=0.9, top=0.9, bottom=0.3, hspace=0.4, wspace=0.4)
+    fig.suptitle('单井预测对比')
+
+    plt.tight_layout()
     plt.show()
+    plt.savefig(r'../result/item.png', dpi=300, bbox_inches='tight')
+    pass
+
+
+def draw_all(pred, label):
+    plt.rcParams['font.size'] = 13
+    rcParams['font.sans-serif'] = ['SimHei']
+    x = [i for i in range(len(pred[0]))]
+
+    fig, axs = plt.subplots(2, 1, figsize=(8, 8), sharex=True)
+
+    axs[0].set_title('真实值')
+    axs[0].plot(x, label[0], label='真实值', color='r')
+    axs[0].plot(x, label[1], label='真实值', color='r')
+    axs[0].plot(x, label[2], label='真实值', color='r')
+    axs[0].set_xlabel('天数/d')
+
+    axs[1].set_title('预测值')
+    axs[1].plot(x, pred[0], label='预测值', color='g')
+    axs[1].plot(x, pred[1], label='预测值', color='g')
+    axs[1].plot(x, pred[2], label='预测值', color='g')
+    axs[1].set_xlabel('天数/d')
+
+    fig.subplots_adjust(left=0.2, right=0.9, top=0.9, bottom=0.3, hspace=0.4, wspace=0.4)
+    fig.suptitle('单井预测对比')
+
+    plt.tight_layout()
+    plt.show()
+    plt.savefig(r'../result/all.png', dpi=300, bbox_inches='tight')
     pass
 
 
@@ -101,11 +150,12 @@ def test():
 
     for mode in mode_list:
         pred, label, cfg = prediction(mode, 0)      # 全量预测测试
-        result.append([pred, label])
+        result.append([np.array(pred), np.array(label)])
         config = cfg
 
     pred, label = process(np.array(result), config)
-    draw(pred, label)
+    draw_item(pred, label)
+    draw_all(pred, label)
 
 
 if __name__ == '__main__':

@@ -98,7 +98,7 @@ def continuous_prediction(init_data, pre_days):
 
 
 if __name__ == '__main__':
-    prediction_days = 2000
+    prediction_days = 3600
 
     init_data = np.array([[12.03142548, 40, 99.34012604], [12.04320621, 40.00000095, 98.45579529],
                           [12.04172993, 39.99999905, 98.22970581]])
