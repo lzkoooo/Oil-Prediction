@@ -110,8 +110,9 @@ def draw_item(pred, label):
     fig.suptitle('单井预测对比')
 
     plt.tight_layout()
-    plt.show()
     plt.savefig(r'../result/item.png', dpi=300, bbox_inches='tight')
+    plt.show()
+
     pass
 
 
@@ -138,8 +139,9 @@ def draw_all(pred, label):
     fig.suptitle('单井预测对比')
 
     plt.tight_layout()
-    plt.show()
     plt.savefig(r'../result/all.png', dpi=300, bbox_inches='tight')
+    plt.show()
+
     pass
 
 
